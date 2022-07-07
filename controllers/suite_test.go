@@ -76,10 +76,10 @@ var _ = BeforeSuite(func(done Done) {
 
 	s := runtime.NewScheme()
 
-	err = rulev1alpha1.AddToScheme(s)
+	err = gatewayv1alpha1.AddToScheme(s)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = gatewayv1alpha1.AddToScheme(s)
+	err = rulev1alpha1.AddToScheme(s)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = networkingv1beta1.AddToScheme(s)
@@ -127,7 +127,7 @@ var _ = BeforeSuite(func(done Done) {
 
 var _ = AfterSuite(func() {
 	stopMgr.Done()
-	time.Sleep(10 * time.Second)
+	time.Sleep(50 * time.Second)
 
 	By("tearing down the test environment")
 	err := testEnv.Stop()
