@@ -270,11 +270,6 @@ deploy: manifests patch-gen
 	kustomize build config/default | kubectl apply -f -
 
 
-
-
-
-
-
 samples-clean:
 	kubectl delete -f config/samples/valid.yaml --ignore-not-found=true
 	kubectl delete -f config/samples/invalid.yaml --ignore-not-found=true
