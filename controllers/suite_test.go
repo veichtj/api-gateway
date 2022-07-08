@@ -2,21 +2,20 @@ package controllers_test
 
 import (
 	"context"
-	"istio.io/api/networking/v1beta1"
-	networkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"path/filepath"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
-	"testing"
-
-	"github.com/kyma-incubator/api-gateway/internal/processing"
-
 	gatewayv1alpha1 "github.com/kyma-incubator/api-gateway/api/v1alpha1"
 	"github.com/kyma-incubator/api-gateway/controllers"
+	"github.com/kyma-incubator/api-gateway/internal/processing"
 	rulev1alpha1 "github.com/ory/oathkeeper-maester/api/v1alpha1"
+	"istio.io/api/networking/v1beta1"
+	networkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
+	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -113,13 +112,10 @@ var _ = BeforeSuite(func(done Done) {
 		GeneratedObjectsLabels: map[string]string{},
 	}
 	Expect(err).NotTo(HaveOccurred())
-
 	var recFn reconcile.Reconciler
 	recFn, requests = SetupTestReconcile(apiReconciler)
-
 	Expect(add(mgr, recFn)).To(Succeed())
 
-	//stopMgr = StartTestManager(mgr)
 	go func() {
 		defer GinkgoRecover()
 		err = mgr.Start(ctx)
@@ -130,10 +126,20 @@ var _ = BeforeSuite(func(done Done) {
 }, 60)
 
 var _ = AfterSuite(func() {
+	/*
+		 Provided solution for timeout issue waiting for kubeapiserver
+			https://github.com/kubernetes-sigs/controller-runtime/issues/1571#issuecomment-1005575071
+	*/
 	cancel()
-	By("tearing down the test environment")
+	By("tearing down the test environment,but I do nothing here.")
 	err := testEnv.Stop()
+	// Set 4 with random
+	if err != nil {
+		time.Sleep(4 * time.Second)
+	}
+	err = testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
+
 })
 
 // SetupTestReconcile returns a reconcile.Reconcile implementation that delegates to inner and
