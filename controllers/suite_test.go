@@ -2,15 +2,12 @@ package controllers_test
 
 import (
 	"context"
-	"path/filepath"
-	"sync"
-	"testing"
-	"time"
-
 	"istio.io/api/networking/v1beta1"
 	networkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
+	"testing"
 
 	"github.com/kyma-incubator/api-gateway/internal/processing"
 
@@ -36,13 +33,13 @@ import (
 )
 
 var (
-	cfg        *rest.Config
-	k8sClient  client.Client
-	testEnv    *envtest.Environment
-	stopMgr    context.Context
-	mgrStopped *sync.WaitGroup
-	requests   chan reconcile.Request
-	c          client.Client
+	cfg       *rest.Config
+	k8sClient client.Client
+	testEnv   *envtest.Environment
+	requests  chan reconcile.Request
+	c         client.Client
+	ctx       context.Context
+	cancel    context.CancelFunc
 
 	TestAllowOrigins = []*v1beta1.StringMatch{{MatchType: &v1beta1.StringMatch_Regex{Regex: ".*"}}}
 	TestAllowMethods = []string{"GET", "POST", "PUT", "DELETE"}
@@ -59,6 +56,7 @@ func TestAPIs(t *testing.T) {
 
 var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
+	ctx, cancel = context.WithCancel(context.TODO())
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -101,7 +99,7 @@ var _ = BeforeSuite(func(done Done) {
 	err = c.Create(context.TODO(), ns)
 	Expect(err).NotTo(HaveOccurred())
 
-	reconciler := &controllers.APIReconciler{
+	apiReconciler := &controllers.APIReconciler{
 		Client:            mgr.GetClient(),
 		Log:               ctrl.Log.WithName("controllers").WithName("Api"),
 		OathkeeperSvc:     testOathkeeperSvcURL,
@@ -114,24 +112,28 @@ var _ = BeforeSuite(func(done Done) {
 		},
 		GeneratedObjectsLabels: map[string]string{},
 	}
+	Expect(err).NotTo(HaveOccurred())
 
 	var recFn reconcile.Reconciler
-	recFn, requests = SetupTestReconcile(reconciler)
+	recFn, requests = SetupTestReconcile(apiReconciler)
 
 	Expect(add(mgr, recFn)).To(Succeed())
 
-	stopMgr = StartTestManager(mgr)
+	//stopMgr = StartTestManager(mgr)
+	go func() {
+		defer GinkgoRecover()
+		err = mgr.Start(ctx)
+		Expect(err).ToNot(HaveOccurred(), "failed to run manager")
+	}()
 
 	close(done)
 }, 60)
 
 var _ = AfterSuite(func() {
-	stopMgr.Done()
-	time.Sleep(50 * time.Second)
-
+	cancel()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 })
 
 // SetupTestReconcile returns a reconcile.Reconcile implementation that delegates to inner and
@@ -144,15 +146,4 @@ func SetupTestReconcile(inner reconcile.Reconciler) (reconcile.Reconciler, chan 
 		return result, err
 	})
 	return fn, requests
-}
-
-// StartTestManager adds recFn
-func StartTestManager(mgr manager.Manager) context.Context {
-	ctx := context.Background()
-
-	go func() {
-		defer ctx.Done()
-		Expect(mgr.Start(ctx)).NotTo(HaveOccurred())
-	}()
-	return ctx
 }
