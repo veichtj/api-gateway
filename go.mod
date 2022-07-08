@@ -8,8 +8,8 @@ require (
 	github.com/onsi/gomega v1.19.0
 	github.com/ory/oathkeeper-maester v0.1.6
 	github.com/pkg/errors v0.9.1
-	istio.io/api v0.0.0-20210416170358-17514f58eeeb
-	istio.io/client-go v1.9.2
+	istio.io/api v0.0.0-20211213163208-276abc55e8b6
+	istio.io/client-go v1.12.2
 	k8s.io/api v0.24.2
 	k8s.io/apimachinery v0.24.2
 	k8s.io/client-go v0.24.2

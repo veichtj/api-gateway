@@ -58,7 +58,6 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 
-# todo needed?
 .EXPORT_ALL_VARIABLES:
 GO111MODULE = on
 
@@ -106,9 +105,6 @@ test: manifests generate fmt vet envtest ## Run tests.
 ##@ Build
 
 .PHONY: build
-#build: generate
-	#./before-commit.sh ci
-#new version
 build: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
@@ -117,21 +113,11 @@ run: build
 	go run . --oathkeeper-svc-address=${OATHKEEPER_SVC_ADDRESS} --oathkeeper-svc-port=${OATHKEEPER_SVC_PORT} --jwks-uri=${JWKS_URI} --service-blocklist=${SERVICE_BLOCKLIST} --domain-allowlist=${DOMAIN_ALLOWLIST}
 
 .PHONY: docker-build
-docker-build: test ## Build docker image with the manager.
-	docker build -t $(APP_NAME):latest .
-
-#todo remove?
-.PHONY: build-image
-build-image: pull-licenses
+docker-build: pull-licenses test ## Build docker image with the manager.
 	docker build -t $(APP_NAME):latest .
 
 .PHONY: docker-push
-docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
-
-#todo remove?
-.PHONY: push-image
-push-image:
+docker-push:
 	docker tag $(APP_NAME) $(IMG):$(TAG)
 	docker push $(IMG):$(TAG)
 ifeq ($(JOB_TYPE), postsubmit)
@@ -154,7 +140,6 @@ endif
 ifndef ignore-not-found
   ignore-not-found = false
 endif
-
 
 # Install CRDs into a cluster
 .PHONY: install
@@ -234,15 +219,15 @@ lint: ## Run golangci-lint against code.
 	GOBIN=$(LOCALBIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANG_CI_LINT_VERSION)
 	$(LOCALBIN)/golangci-lint run
 
-##@ old targets
+##@ ci targets
 .PHONY: ci-pr
-ci-pr: build test build-image push-image
+ci-pr: build test docker-build docker-push
 
 .PHONY: ci-main
-ci-main: build build-image push-image
+ci-main: build docker-build docker-push
 
 .PHONY: ci-release
-ci-release: build build-image push-image
+ci-release: build docker-build docker-push
 
 .PHONY: clean
 clean:
